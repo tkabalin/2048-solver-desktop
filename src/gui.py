@@ -6,6 +6,7 @@ from tkinter import messagebox
 import os
 from PIL import Image, ImageTk
 import tkinter as tk
+from tkinter import ttk
 
 class GameGUI:
 
@@ -19,6 +20,8 @@ class GameGUI:
         self.settings = None
         self.delay_ms = delay_ms
         self.auto_restart = auto_restart
+        self.selected_mode = tk.StringVar()
+
 
         self.board = Board(grid_size = 4)
         self.board.set_update_callback(self.update_gui)
@@ -71,6 +74,32 @@ class GameGUI:
         )
         self.restart_button.pack(side="right", padx=10)
 
+        # Autosolve option
+        strategies = ["-","Random", "Corner","Max Merge"]
+
+        self.auto_solve_dropdown = ttk.Combobox(
+            self.top_frame,
+            values = strategies,
+            state = "readonly",
+            textvariable=self.selected_mode
+        )
+        self.auto_solve_dropdown.current(0)
+        self.auto_solve_dropdown.bind("<<ComboboxSelected>>", self.refresh_button_state)
+        self.auto_solve_dropdown.pack(side="left", padx = 10)
+
+        # Autosolve Button
+        self.solve_button = tk.Button(
+            self.top_frame,
+            text = "Solve",
+            bg = bg_colour,
+            fg=self.theme["TILE_COLORS"][2][1],
+            borderwidth=0,
+            activebackground=bg_colour,
+            state = "disabled",
+            command=self.start_solve
+        )
+        self.solve_button.pack(side="left", padx=10)
+
         # Main board
         self.background = tk.Frame(self.master, bg=bg_colour)
         self.background.grid(row=1, column=0, padx=10, pady=10)
@@ -101,22 +130,27 @@ class GameGUI:
         self.board.restart()
         self.update_gui()
 
+    def refresh_button_state(self, event):
+        if self.auto_solve_dropdown.get() == "-":
+            self.solve_button.config(state="disabled")
+        else:
+            self.solve_button.config(state="normal")
+    
+    def start_solve(self):
+        if self.auto_solve_dropdown.get() == "Random":
+            self.solver.random_strat()
+            return
+        if self.auto_solve_dropdown.get() == "Corner":
+            self.solver.corner_strat()
+            return
+        if self.auto_solve_dropdown.get() == "Max Merge":
+            self.solver.max_merge_strat()
+            return
+
     def key_pressed(self, event): # Accepts both arrows and WSAD
         key = event.keysym.lower()
         if key in ['up', 'w', 'down', 's', 'left', 'a', 'right', 'd']:  # If user tries to interact
             self.solver.stop()
-        
-        ##### TEMP #####
-        if key == 'z':
-            self.solver.random_strat()
-            return
-        if key == 'x':
-            self.solver.corner_strat()
-            return
-        if key == 'c':
-            self.solver.max_merge_strat()
-            return
-        ######
 
         grid = self.board.grid
         saved_grid = util.copy_grid(grid)
@@ -154,6 +188,7 @@ class GameGUI:
         self.top_frame.configure(bg=bg_colour)
         self.background.configure(bg=bg_colour)
         self.restart_button.configure(bg=bg_colour, fg=self.theme["TILE_COLORS"][2][1])
+        self.solve_button.configure(bg=bg_colour, fg=self.theme["TILE_COLORS"][2][1])
         try:
             self.gear_button.configure(bg=bg_colour, activebackground=bg_colour)
         except Exception:

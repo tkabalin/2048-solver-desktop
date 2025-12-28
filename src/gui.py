@@ -8,6 +8,9 @@ from PIL import Image, ImageTk
 import tkinter as tk
 from tkinter import ttk
 
+# This class is long overdue for a refactor
+# The game logic should be separated into the board class
+
 class GameGUI:
 
     def __init__(self, master, root_dir, tile_size, font_size, initial_theme_name, delay_ms, auto_restart):
@@ -41,41 +44,46 @@ class GameGUI:
         self.top_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 0))
 
         # Settings button
-        try:
-            gear_path = os.path.join(self.root_dir, "assets", "settings.png")
-            gear_img = Image.open(gear_path) # CREDIT: https://www.flaticon.com/free-icons/options
-            gear_size = int(self.tile_size * 0.25)
-            gear_img = gear_img.resize((gear_size, gear_size), Image.Resampling.LANCZOS)
-            gear_image = ImageTk.PhotoImage(gear_img)
-            self.gear_button = tk.Button(
-                self.top_frame,
-                image=gear_image,
-                bg=bg_colour,
-                borderwidth=0,
-                activebackground=bg_colour,
-                command=self.open_settings
-            )
-            self.gear_button.image = gear_image
-            self.gear_button.pack(side="right", padx=10)
-        except Exception as e:
-            print(f"Could not load settings icon: {e}")
-            self.gear_button = tk.Button(self.top_frame, text="Settings", command=self.open_settings)
-            self.gear_button.pack(side="right", padx=10)
+        # try:
+        #     gear_path = os.path.join(self.root_dir, "assets", "settings.png")
+        #     gear_img = Image.open(gear_path) # CREDIT: https://www.flaticon.com/free-icons/options
+        #     gear_size = int(self.tile_size * 0.25)
+        #     gear_img = gear_img.resize((gear_size, gear_size), Image.Resampling.LANCZOS)
+        #     gear_image = ImageTk.PhotoImage(gear_img)
+        #     self.gear_button = tk.Button(
+        #         self.top_frame,
+        #         image=gear_image,
+        #         bg=bg_colour,
+        #         borderwidth=0,
+        #         activebackground=bg_colour,
+        #         command=self.open_settings
+        #     )
+        #     self.gear_button.image = gear_image
+        #     self.gear_button.pack(side="right", padx=10)
+        # except Exception as e:
+        #     print(f"Could not load settings icon: {e}")
+        #     self.gear_button = tk.Button(self.top_frame, text="Settings", command=self.open_settings)
+        #     self.gear_button.pack(side="right", padx=10)
+
+        self.gear_button = tk.Button(
+            self.top_frame,
+            text="Setttings",
+            borderwidth=0,
+            command=self.open_settings
+        )
+        self.gear_button.pack(side="right", padx=10)
 
         # Restart button
         self.restart_button = tk.Button(
             self.top_frame,
             text="Restart",
-            bg=bg_colour,
-            fg=self.theme["TILE_COLORS"][2][1],
             borderwidth=0,
-            activebackground=bg_colour,
             command=self.restart_game
         )
         self.restart_button.pack(side="right", padx=10)
 
         # Autosolve option
-        strategies = ["-","Random", "Corner","Max Merge"]
+        strategies = ["","Random", "Corner","Max Merge"]
 
         self.auto_solve_dropdown = ttk.Combobox(
             self.top_frame,
@@ -91,10 +99,7 @@ class GameGUI:
         self.solve_button = tk.Button(
             self.top_frame,
             text = "Solve",
-            bg = bg_colour,
-            fg=self.theme["TILE_COLORS"][2][1],
             borderwidth=0,
-            activebackground=bg_colour,
             state = "disabled",
             command=self.start_solve
         )
@@ -131,12 +136,14 @@ class GameGUI:
         self.update_gui()
 
     def refresh_button_state(self, event):
-        if self.auto_solve_dropdown.get() == "-":
+        if self.auto_solve_dropdown.get() == " ":
             self.solve_button.config(state="disabled")
         else:
             self.solve_button.config(state="normal")
     
     def start_solve(self):
+        self.solver.delay = self.delay_ms.get()
+
         if self.auto_solve_dropdown.get() == "Random":
             self.solver.random_strat()
             return
@@ -175,10 +182,17 @@ class GameGUI:
         grid = self.board.grid
         if util.check_won(grid):
             self.board.game_over = True
-            messagebox.showinfo("2048", "You won!")
+            if self.auto_restart.get() == True:
+                self.restart_game()
+            else:
+                messagebox.showinfo("2048", "You won!")
+
         elif util.check_lost(grid):
             self.board.game_over = True
-            messagebox.showinfo("2048", "Game Over!")
+            if self.auto_restart.get() == True:
+                self.restart_game()
+            else:
+                messagebox.showinfo("2048", "Game Over!")
 
     def update_theme(self, theme_name):
         self.theme_name = theme_name
@@ -187,12 +201,12 @@ class GameGUI:
         self.master.configure(bg=bg_colour)
         self.top_frame.configure(bg=bg_colour)
         self.background.configure(bg=bg_colour)
-        self.restart_button.configure(bg=bg_colour, fg=self.theme["TILE_COLORS"][2][1])
-        self.solve_button.configure(bg=bg_colour, fg=self.theme["TILE_COLORS"][2][1])
-        try:
-            self.gear_button.configure(bg=bg_colour, activebackground=bg_colour)
-        except Exception:
-            pass
+        #self.restart_button.configure(bg=bg_colour, fg=self.theme["TILE_COLORS"][2][1])
+        #self.solve_button.configure(bg=bg_colour, fg=self.theme["TILE_COLORS"][2][1])
+        # try:
+        #     self.gear_button.configure(bg=bg_colour, activebackground=bg_colour)
+        # except Exception:
+        #     pass
         self.update_gui()
 
     def update_gui(self):
@@ -317,18 +331,17 @@ class SettingsWindow(tk.Toplevel):
         ).pack(side="right", padx=(10, 0))
         
         # Cancel Button (Right side, next to OK)
-        tk.Button(
-            button_frame,
-            text="Cancel",
-            command=self.cancel_and_close, 
-            width=8
-        ).pack(side="right", padx=0)
+        # tk.Button(
+        #     button_frame,
+        #     text="Cancel",
+        #     command=self.cancel_and_close, 
+        #     width=8
+        # ).pack(side="right", padx=0)
 
 
     def apply_and_close(self):
         selected_theme = self.current_theme_name.get()
         self.theme_callback(selected_theme)
-
 
         self.grab_release()
         self.destroy()
@@ -340,7 +353,9 @@ class SettingsWindow(tk.Toplevel):
 
     def revert_settings(self):
         self.theme_callback("colourful")
-        
+
+        self.auto_restart.set(False)
+        self.delay_ms.set(0)
 
         self.grab_release()
         self.destroy()
